@@ -18,12 +18,25 @@ export default function MarriageForm() {
     bBrgy: "", bTown: "", bProv: "NUEVA VIZCAYA", bCountry: "PHILIPPINES",
     bCitizen: "FILIPINO", bStatus: "SINGLE", bReligion: "",
     bFathF: "", bFathM: "", bFathL: "",
-    bMothF: "", bMothM: "", bMothL: " ",
+    bMothF: "", bMothM: "", bMothL: "",
   });
 
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [applicationCode, setApplicationCode] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // HELPER: Calculate Age
+  const calculateAge = (birthDateString: string): number => {
+    if (!birthDateString) return 0;
+    const today = new Date();
+    const birthDate = new Date(birthDateString);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age > 0 ? age : 0;
+  };
 
   const generateExcel = async () => {
     setLoading(true);
@@ -31,7 +44,6 @@ export default function MarriageForm() {
       const { gAge: m, bAge: f, gTown: mTown, bTown: fTown } = formData;
       
       let templateName = "application_only.xlsx";
-      // Template selection logic based on age (Consent/Advice)
       if (f >= 18 && f <= 20 && m >= 25) templateName = "consent_f.xlsx";
       else if (m >= 18 && m <= 20 && f >= 25) templateName = "consent_m.xlsx";
       else if (m >= 18 && m <= 20 && f >= 18 && f <= 20) templateName = "consent_m_f.xlsx";
@@ -50,8 +62,6 @@ export default function MarriageForm() {
 
       workbook.worksheets.forEach(sheet => {
         const sName = sheet.name.toUpperCase();
-        
-        // Tab Visibility
         if (sName.includes("ADDRESSBACKNOTICE") || sName.includes("ENVELOPEADDRESS")) {
           sheet.state = isExternal ? 'visible' : 'hidden';
         } else {
@@ -62,7 +72,7 @@ export default function MarriageForm() {
         const gFullAddr = toUp(`${formData.gBrgy}, ${formData.gTown}, ${formData.gProv}`);
         const bFullAddr = toUp(`${formData.bBrgy}, ${formData.bTown}, ${formData.bProv}`);
 
-        // --- MALE (GROOM) MAPPING ---
+        // MALE MAPPING
         sheet.getCell('B8').value = toUp(formData.gFirst);
         sheet.getCell('B9').value = toUp(formData.gMiddle);
         sheet.getCell('B10').value = toUp(formData.gLast);
@@ -72,7 +82,7 @@ export default function MarriageForm() {
         sheet.getCell('B16').value = toUp(formData.gReligion);
         sheet.getCell('B17').value = toUp(formData.gStatus);
 
-        // --- FEMALE (BRIDE) MAPPING ---
+        // FEMALE MAPPING
         sheet.getCell('U8').value = toUp(formData.bFirst);
         sheet.getCell('U9').value = toUp(formData.bMiddle);
         sheet.getCell('U10').value = toUp(formData.bLast);
@@ -82,11 +92,7 @@ export default function MarriageForm() {
         sheet.getCell('U16').value = toUp(formData.bReligion);
         sheet.getCell('U17').value = toUp(formData.bStatus);
 
-        // --- PARENTAL & GUARDIAN LOGIC ---
-        // This applies to Consent/Advice sheets OR the Application sheet if it shares these cells
         const isGroomTarget = sName.includes("APPLICATION") || sName.includes(" M") || sName.endsWith("M");
-        
-        // If sheet is Male-focused or General Application
         if (isGroomTarget) {
           sheet.getCell('B22').value = toUp(formData.gFathF);
           sheet.getCell('H22').value = toUp(formData.gFathM);
@@ -94,35 +100,30 @@ export default function MarriageForm() {
           sheet.getCell('B26').value = toUp(formData.gMothF);
           sheet.getCell('G26').value = toUp(formData.gMothM);
           sheet.getCell('K26').value = toUp(formData.gMothL);
-          sheet.getCell('N25').value = gFullAddr; // Father Addr
-          sheet.getCell('B29').value = gFullAddr; // Mother Addr
-          sheet.getCell('M24').value = toUp(formData.gCountry); // Father Country
-          sheet.getCell('M29').value = toUp(formData.gCountry); // Mother Country
-          sheet.getCell('B23').value = toUp(formData.gCitizen); // Guardian Cit
-          sheet.getCell('B27').value = toUp(formData.gCitizen); // Guardian Cit
-          sheet.getCell('B32').value = toUp(formData.gCitizen); // Guardian Cit
+          sheet.getCell('N25').value = gFullAddr;
+          sheet.getCell('B29').value = gFullAddr;
+          sheet.getCell('M24').value = toUp(formData.gCountry);
+          sheet.getCell('M29').value = toUp(formData.gCountry);
+          sheet.getCell('B23').value = toUp(formData.gCitizen);
+          sheet.getCell('B27').value = toUp(formData.gCitizen);
+          sheet.getCell('B32').value = toUp(formData.gCitizen);
         }
 
-        // If sheet is Female-focused or General Application (using different offsets)
         const isBrideTarget = sName.includes("APPLICATION") || sName.includes(" F") || sName.endsWith("F");
-        if (isBrideTarget) {
-          // Note: If Application tab has separate Bride Parent cells, update these coordinates
-          // For now, mapping as requested for the specific person's document
-          if (!sName.includes("APPLICATION")) {
-             sheet.getCell('B22').value = toUp(formData.bFathF);
-             sheet.getCell('H22').value = toUp(formData.bFathM);
-             sheet.getCell('L22').value = toUp(formData.bFathL);
-             sheet.getCell('B26').value = toUp(formData.bMothF);
-             sheet.getCell('G26').value = toUp(formData.bMothM);
-             sheet.getCell('K26').value = toUp(formData.bMothL);
-             sheet.getCell('N25').value = bFullAddr;
-             sheet.getCell('B29').value = bFullAddr;
-             sheet.getCell('AF25').value = toUp(formData.bCountry);
-             sheet.getCell('AF29').value = toUp(formData.bCountry);
-             sheet.getCell('U23').value = toUp(formData.bCitizen);
-             sheet.getCell('U27').value = toUp(formData.bCitizen);
-             sheet.getCell('U32').value = toUp(formData.bCitizen);
-          }
+        if (isBrideTarget && !sName.includes("APPLICATION")) {
+          sheet.getCell('B22').value = toUp(formData.bFathF);
+          sheet.getCell('H22').value = toUp(formData.bFathM);
+          sheet.getCell('L22').value = toUp(formData.bFathL);
+          sheet.getCell('B26').value = toUp(formData.bMothF);
+          sheet.getCell('G26').value = toUp(formData.bMothM);
+          sheet.getCell('K26').value = toUp(formData.bMothL);
+          sheet.getCell('N25').value = bFullAddr;
+          sheet.getCell('B29').value = bFullAddr;
+          sheet.getCell('AF25').value = toUp(formData.bCountry);
+          sheet.getCell('AF29').value = toUp(formData.bCountry);
+          sheet.getCell('U23').value = toUp(formData.bCitizen);
+          sheet.getCell('U27').value = toUp(formData.bCitizen);
+          sheet.getCell('U32').value = toUp(formData.bCitizen);
         }
       });
 
@@ -141,6 +142,7 @@ export default function MarriageForm() {
         {!isSubmitted ? (
           <form onSubmit={(e) => { e.preventDefault(); setApplicationCode(`${Math.floor(1000 + Math.random() * 9000)}`); setIsSubmitted(true); }} className="p-10 space-y-12">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+              {/* GROOM */}
               <Section title="GROOM" color="blue">
                 <div className="grid grid-cols-3 gap-3">
                   <Field label="First"><Input value={formData.gFirst} onChange={e => setFormData({...formData, gFirst: e.target.value})} /></Field>
@@ -148,8 +150,17 @@ export default function MarriageForm() {
                   <Field label="Last"><Input value={formData.gLast} onChange={e => setFormData({...formData, gLast: e.target.value})} /></Field>
                 </div>
                 <div className="grid grid-cols-3 gap-3">
-                  <Field label="Birthday"><Input type="date" value={formData.gBday} onChange={e => setFormData({...formData, gBday: e.target.value})} /></Field>
-                  <Field label="Age"><Input type="number" value={formData.gAge || ""} onChange={e => setFormData({...formData, gAge: parseInt(e.target.value) || 0})} /></Field>
+                  <Field label="Birthday">
+                    <Input 
+                      type="date" 
+                      value={formData.gBday} 
+                      onChange={e => {
+                        const bday = e.target.value;
+                        setFormData({...formData, gBday: bday, gAge: calculateAge(bday)});
+                      }} 
+                    />
+                  </Field>
+                  <Field label="Age"><Input type="number" readOnly value={formData.gAge || ""} className="bg-slate-50 cursor-not-allowed" /></Field>
                   <Field label="Religion"><Input value={formData.gReligion} onChange={e => setFormData({...formData, gReligion: e.target.value})} /></Field>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
@@ -159,6 +170,7 @@ export default function MarriageForm() {
                 <ParentSubSection person="Groom" data={formData} setData={setFormData} prefix="g" />
               </Section>
 
+              {/* BRIDE */}
               <Section title="BRIDE" color="pink">
                 <div className="grid grid-cols-3 gap-3">
                   <Field label="First"><Input value={formData.bFirst} onChange={e => setFormData({...formData, bFirst: e.target.value})} /></Field>
@@ -166,8 +178,17 @@ export default function MarriageForm() {
                   <Field label="Last"><Input value={formData.bLast} onChange={e => setFormData({...formData, bLast: e.target.value})} /></Field>
                 </div>
                 <div className="grid grid-cols-3 gap-3">
-                  <Field label="Birthday"><Input type="date" value={formData.bBday} onChange={e => setFormData({...formData, bBday: e.target.value})} /></Field>
-                  <Field label="Age"><Input type="number" value={formData.bAge || ""} onChange={e => setFormData({...formData, bAge: parseInt(e.target.value) || 0})} /></Field>
+                  <Field label="Birthday">
+                    <Input 
+                      type="date" 
+                      value={formData.bBday} 
+                      onChange={e => {
+                        const bday = e.target.value;
+                        setFormData({...formData, bBday: bday, bAge: calculateAge(bday)});
+                      }} 
+                    />
+                  </Field>
+                  <Field label="Age"><Input type="number" readOnly value={formData.bAge || ""} className="bg-slate-50 cursor-not-allowed" /></Field>
                   <Field label="Religion"><Input value={formData.bReligion} onChange={e => setFormData({...formData, bReligion: e.target.value})} /></Field>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
@@ -191,7 +212,6 @@ export default function MarriageForm() {
   );
 }
 
-// STYLING COMPONENTS
 function Section({ title, color, children }: { title: string, color: 'blue' | 'pink', children: React.ReactNode }) {
   const borderColor = color === 'blue' ? 'border-blue-200' : 'border-pink-200';
   const textColor = color === 'blue' ? 'text-blue-800' : 'text-pink-800';
