@@ -12,6 +12,7 @@ export default function MarriageForm() {
     gCitizen: "FILIPINO", gStatus: "SINGLE", gReligion: "",
     gFathF: "", gFathM: "", gFathL: "",
     gMothF: "", gMothM: "", gMothL: "",
+    gGiverName: "", gGiverRelation: "", gGiverAddress: "",
 
     // BRIDE
     bFirst: "", bMiddle: "", bLast: "", bBday: "", bAge: 0,
@@ -19,6 +20,7 @@ export default function MarriageForm() {
     bCitizen: "FILIPINO", bStatus: "SINGLE", bReligion: "",
     bFathF: "", bFathM: "", bFathL: "",
     bMothF: "", bMothM: "", bMothL: "",
+    bGiverName: "", bGiverRelation: "", bGiverAddress: "",
   });
 
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -37,6 +39,8 @@ export default function MarriageForm() {
     }
     return age > 0 ? age : 0;
   };
+
+  const needsGiver = (age: number) => age >= 18 && age <= 24;
 
   const generateExcel = async () => {
     setLoading(true);
@@ -107,6 +111,11 @@ export default function MarriageForm() {
           sheet.getCell('B23').value = toUp(formData.gCitizen);
           sheet.getCell('B27').value = toUp(formData.gCitizen);
           sheet.getCell('B32').value = toUp(formData.gCitizen);
+          
+          if(needsGiver(formData.gAge)) {
+            sheet.getCell('B35').value = toUp(formData.gGiverName);
+            sheet.getCell('B36').value = toUp(formData.gGiverRelation);
+          }
         }
 
         const isBrideTarget = sName.includes("APPLICATION") || sName.includes(" F") || sName.endsWith("F");
@@ -124,6 +133,11 @@ export default function MarriageForm() {
           sheet.getCell('U23').value = toUp(formData.bCitizen);
           sheet.getCell('U27').value = toUp(formData.bCitizen);
           sheet.getCell('U32').value = toUp(formData.bCitizen);
+
+          if(needsGiver(formData.bAge)) {
+            sheet.getCell('B35').value = toUp(formData.bGiverName);
+            sheet.getCell('B36').value = toUp(formData.bGiverRelation);
+          }
         }
       });
 
@@ -168,6 +182,7 @@ export default function MarriageForm() {
                   <Field label="Town"><Input value={formData.gTown} onChange={e => setFormData({...formData, gTown: e.target.value})} /></Field>
                 </div>
                 <ParentSubSection person="Groom" data={formData} setData={setFormData} prefix="g" />
+                <GiverSection person="Groom" age={formData.gAge} data={formData} setData={setFormData} prefix="g" />
               </Section>
 
               {/* BRIDE */}
@@ -196,6 +211,7 @@ export default function MarriageForm() {
                   <Field label="Town"><Input value={formData.bTown} onChange={e => setFormData({...formData, bTown: e.target.value})} /></Field>
                 </div>
                 <ParentSubSection person="Bride" data={formData} setData={setFormData} prefix="b" />
+                <GiverSection person="Bride" age={formData.bAge} data={formData} setData={setFormData} prefix="b" />
               </Section>
             </div>
             <button type="submit" className="w-full bg-slate-900 text-white py-5 rounded-xl font-bold text-xl uppercase tracking-widest hover:bg-black transition-all">Generate Marriage Pack</button>
@@ -203,7 +219,9 @@ export default function MarriageForm() {
         ) : (
           <div className="p-20 text-center space-y-8">
             <h2 className="text-8xl font-black text-blue-600">{applicationCode}</h2>
-            <button onClick={generateExcel} className="w-full max-w-md bg-green-600 text-white py-6 rounded-2xl font-bold text-2xl shadow-xl hover:bg-green-700">DOWNLOAD EXCEL</button>
+            <button onClick={generateExcel} disabled={loading} className="w-full max-w-md bg-green-600 text-white py-6 rounded-2xl font-bold text-2xl shadow-xl hover:bg-green-700 disabled:bg-slate-400">
+              {loading ? "GENERATING..." : "DOWNLOAD EXCEL"}
+            </button>
             <button onClick={() => setIsSubmitted(false)} className="block mx-auto text-slate-500 underline font-bold">Back to Edit</button>
           </div>
         )}
@@ -219,6 +237,30 @@ function Section({ title, color, children }: { title: string, color: 'blue' | 'p
     <div className="space-y-6">
       <h2 className={`${textColor} font-black text-xl border-b-4 ${borderColor} pb-1`}>{title}</h2>
       {children}
+    </div>
+  );
+}
+
+function GiverSection({ person, age, data, setData, prefix }: any) {
+  if (age < 18 || age > 24) return null;
+
+  const isG = prefix === 'g';
+  const label = age <= 20 ? "CONSENT" : "ADVICE";
+
+  return (
+    <div className={`p-5 rounded-2xl border-2 border-dashed ${isG ? 'border-blue-300 bg-blue-50/50' : 'border-pink-300 bg-pink-50/50'} space-y-4`}>
+      <p className="text-xs font-black uppercase tracking-widest text-slate-600">Person Giving {label} ({person})</p>
+      <Field label="Full Name">
+        <Input placeholder="e.g. JUAN DELA CRUZ" value={data[`${prefix}GiverName`]} onChange={e => setData({...data, [`${prefix}GiverName`]: e.target.value})} />
+      </Field>
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Relationship">
+          <Input placeholder="e.g. FATHER" value={data[`${prefix}GiverRelation`]} onChange={e => setData({...data, [`${prefix}GiverRelation`]: e.target.value})} />
+        </Field>
+        <Field label="Residence/Address">
+          <Input placeholder="Town, Province" value={data[`${prefix}GiverAddress`]} onChange={e => setData({...data, [`${prefix}GiverAddress`]: e.target.value})} />
+        </Field>
+      </div>
     </div>
   );
 }
