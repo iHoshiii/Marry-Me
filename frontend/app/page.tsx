@@ -18,7 +18,7 @@ export default function MarriageForm() {
     bBrgy: "", bTown: "", bProv: "NUEVA VIZCAYA", bCountry: "PHILIPPINES",
     bCitizen: "FILIPINO", bStatus: "SINGLE", bReligion: "",
     bFathF: "", bFathM: "", bFathL: "",
-    bMothF: "", bMothM: "", bMothL: "",
+    bMothF: "", bMothM: "", bMothL: " ",
   });
 
   const [isSubmitted, setIsSubmitted] = useState(false);
