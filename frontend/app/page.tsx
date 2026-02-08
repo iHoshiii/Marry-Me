@@ -1,6 +1,5 @@
 "use client";
 
-import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { useState } from 'react';
 
@@ -39,166 +38,32 @@ export default function MarriageForm() {
     return age > 0 ? age : 0;
   };
 
-  const needsGiver = (age: number) => age >= 18 && age <= 24;
-
   const generateExcel = async () => {
     setLoading(true);
     try {
-      const { gAge: mAge, bAge: fAge, gTown, gProv, bTown, bProv } = formData;
-      
-      let templateName = "application_only.xlsx";
-      if (fAge >= 18 && fAge <= 20 && mAge >= 25) templateName = "consent_f.xlsx";
-      else if (mAge >= 18 && mAge <= 20 && fAge >= 25) templateName = "consent_m.xlsx";
-      else if (mAge >= 18 && mAge <= 20 && fAge >= 18 && fAge <= 20) templateName = "consent_m_f.xlsx";
-      else if (fAge >= 21 && fAge <= 24 && mAge >= 25) templateName = "advice_f.xlsx";
-      else if (mAge >= 21 && mAge <= 24 && fAge >= 25) templateName = "advice_m.xlsx";
-      else if (mAge >= 21 && mAge <= 24 && fAge >= 21 && fAge <= 24) templateName = "advice_m_f.xlsx";
-      else if (mAge >= 21 && mAge <= 24 && fAge >= 18 && fAge <= 20) templateName = "advice_m_consent_f.xlsx";
-      else if (fAge >= 21 && fAge <= 24 && mAge >= 18 && mAge <= 20) templateName = "consent_m_advice_f.xlsx";
-
-      const response = await fetch(`/${templateName}`);
-      const arrayBuffer = await response.arrayBuffer();
-      const workbook = new ExcelJS.Workbook();
-      await workbook.xlsx.load(arrayBuffer);
-
-      const now = new Date();
-      const dayNow = now.getDate();
-      const monthNow = now.toLocaleString('default', { month: 'long' }).toUpperCase();
-      const yearNow = now.getFullYear();
-
-      const toUp = (val: any) => (val ? val.toString().toUpperCase().trim() : "");
-      
-      const gFullAddr = toUp(`${formData.gBrgy}, ${formData.gTown}, ${formData.gProv}`);
-      const bFullAddr = toUp(`${formData.bBrgy}, ${formData.bTown}, ${formData.bProv}`);
-      const gTownProv = toUp(`${formData.gTown}, ${formData.gProv}`);
-      const bTownProv = toUp(`${formData.bTown}, ${formData.bProv}`);
-
-      // Logic for External Address Sheets
-      const isGroomExternal = gTownProv !== "SOLANO, NUEVA VIZCAYA";
-      const isBrideExternal = bTownProv !== "SOLANO, NUEVA VIZCAYA";
-      const needsBackSheets = isGroomExternal || isBrideExternal;
-
-      workbook.worksheets.forEach(sheet => {
-        const sName = sheet.name.toUpperCase();
-
-        // Handle Sheet Visibility
-        if (sName.includes("ADDRESSBACKNOTICE") || sName.includes("ENVELOPEADDRESS")) {
-          sheet.state = needsBackSheets ? 'visible' : 'hidden';
-        }
-
-        if (sName.includes("APPLICATION")) {
-          // --- MALE MAPPING ---
-          sheet.getCell('B8').value = toUp(formData.gFirst);
-          sheet.getCell('B9').value = toUp(formData.gMiddle);
-          sheet.getCell('B10').value = toUp(formData.gLast);
-          sheet.getCell('B11').value = toUp(formData.gBday);
-          sheet.getCell('N11').value = formData.gAge;
-          sheet.getCell('B12').value = gTownProv;
-          sheet.getCell('L12').value = toUp(formData.gCountry);
-          sheet.getCell('B13').value = "MALE";
-          sheet.getCell('H13').value = toUp(formData.gCitizen);
-          sheet.getCell('B15').value = gFullAddr;
-          sheet.getCell('M15').value = toUp(formData.gCountry);
-          sheet.getCell('B16').value = toUp(formData.gReligion);
-          sheet.getCell('B17').value = toUp(formData.gStatus);
-          sheet.getCell('B22').value = toUp(formData.gFathF);
-          sheet.getCell('H22').value = toUp(formData.gFathM);
-          sheet.getCell('L22').value = toUp(formData.gFathL);
-          sheet.getCell('B23').value = toUp(formData.gCitizen);
-          sheet.getCell('B25').value = gFullAddr;
-          sheet.getCell('M25').value = toUp(formData.gCountry);
-          sheet.getCell('B26').value = toUp(formData.gMothF);
-          sheet.getCell('G26').value = toUp(formData.gMothM);
-          sheet.getCell('K26').value = toUp(formData.gMothL);
-          sheet.getCell('B27').value = toUp(formData.gCitizen);
-          sheet.getCell('B29').value = gFullAddr;
-          sheet.getCell('M29').value = toUp(formData.gCountry);
-          sheet.getCell('B34').value = gFullAddr;
-          sheet.getCell('M34').value = toUp(formData.gCountry);
-
-          if(needsGiver(formData.gAge)) {
-            sheet.getCell('B30').value = toUp(formData.gGiverF);
-            sheet.getCell('H30').value = toUp(formData.gGiverM);
-            sheet.getCell('L30').value = toUp(formData.gGiverL);
-            sheet.getCell('B31').value = toUp(formData.gGiverRelation);
-            sheet.getCell('B32').value = toUp(formData.gCitizen);
-          }
-
-          // --- FEMALE MAPPING ---
-          sheet.getCell('U8').value = toUp(formData.bFirst);
-          sheet.getCell('U9').value = toUp(formData.bMiddle);
-          sheet.getCell('U10').value = toUp(formData.bLast);
-          sheet.getCell('U11').value = toUp(formData.bBday);
-          sheet.getCell('AF11').value = formData.bAge;
-          sheet.getCell('U12').value = bTownProv;
-          sheet.getCell('AE12').value = toUp(formData.bCountry);
-          sheet.getCell('U13').value = "FEMALE";
-          sheet.getCell('Z13').value = toUp(formData.bCitizen);
-          sheet.getCell('U15').value = bFullAddr;
-          sheet.getCell('AF15').value = toUp(formData.bCountry);
-          sheet.getCell('U16').value = toUp(formData.bReligion);
-          sheet.getCell('U17').value = toUp(formData.bStatus);
-          sheet.getCell('U22').value = toUp(formData.bFathF);
-          sheet.getCell('Y22').value = toUp(formData.bFathM);
-          sheet.getCell('AC22').value = toUp(formData.bFathL);
-          sheet.getCell('U23').value = toUp(formData.bCitizen);
-          sheet.getCell('U25').value = bFullAddr;
-          sheet.getCell('AF25').value = toUp(formData.bCountry);
-          sheet.getCell('U26').value = toUp(formData.bMothF);
-          sheet.getCell('Y26').value = toUp(formData.bMothM);
-          sheet.getCell('AD26').value = toUp(formData.bMothL);
-          sheet.getCell('U27').value = toUp(formData.bCitizen);
-          sheet.getCell('U29').value = bFullAddr;
-          sheet.getCell('AF29').value = toUp(formData.bCountry);
-          sheet.getCell('U34').value = bFullAddr;
-          sheet.getCell('AF34').value = toUp(formData.bCountry);
-
-          if(needsGiver(formData.bAge)) {
-            sheet.getCell('U30').value = toUp(formData.bGiverF);
-            sheet.getCell('Y30').value = toUp(formData.bGiverM);
-            sheet.getCell('AD30').value = toUp(formData.bGiverL);
-            sheet.getCell('U31').value = toUp(formData.bGiverRelation);
-            sheet.getCell('U32').value = toUp(formData.bCitizen);
-          }
-
-          // --- DATE AND LOCATION ---
-          sheet.getCell('B37').value = dayNow;
-          sheet.getCell('U37').value = dayNow;
-          sheet.getCell('E37').value = monthNow;
-          sheet.getCell('W37').value = monthNow;
-          sheet.getCell('L37').value = yearNow;
-          sheet.getCell('AD37').value = yearNow;
-          sheet.getCell('B38').value = "SOLANO, NUEVA VIZCAYA";
-          sheet.getCell('U38').value = "SOLANO, NUEVA VIZCAYA";
-        }
-
-        // --- NOTICE TAB LOGIC ---
-        if (sName.includes("NOTICE")) {
-            // F20 and F26 are usually where town/prov are mapped in Notice templates
-            // Your request: If both are Solano, leave E44-46 empty. 
-            // If both are not, print addresses on E44, E45.
-            // If one is not, print on E44.
-
-            if (isGroomExternal && isBrideExternal) {
-                sheet.getCell('E44').value = gFullAddr;
-                sheet.getCell('E45').value = bFullAddr;
-            } else if (isGroomExternal) {
-                sheet.getCell('E44').value = gFullAddr;
-                sheet.getCell('E45').value = "";
-            } else if (isBrideExternal) {
-                sheet.getCell('E44').value = bFullAddr;
-                sheet.getCell('E45').value = "";
-            } else {
-                sheet.getCell('E44').value = "";
-                sheet.getCell('E45').value = "";
-                sheet.getCell('E46').value = "";
-            }
-        }
+      // REMOVED the trailing slash after marriage-pack
+      const response = await fetch('http://127.0.0.1:8080/generate-marriage-pack', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
       });
 
-      const buffer = await workbook.xlsx.writeBuffer();
-      saveAs(new Blob([buffer]), `MARRIAGE_APP_${applicationCode}.xlsx`);
-    } catch (e) { alert("Error generating excel."); console.error(e); } finally { setLoading(false); }
+      if (!response.ok) {
+        // This will now catch 404s and 500s properly
+        const errorData = await response.json();
+        throw new Error(errorData.detail || "Server Error");
+      }
+
+      const blob = await response.blob();
+      saveAs(blob, `MARRIAGE_APP_${applicationCode}.xlsx`);
+    } catch (e: any) {
+      alert(`Error: ${e.message}`);
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -209,8 +74,16 @@ export default function MarriageForm() {
         </header>
 
         {!isSubmitted ? (
-          <form onSubmit={(e) => { e.preventDefault(); setApplicationCode(`${Math.floor(1000 + Math.random() * 9000)}`); setIsSubmitted(true); }} className="p-10 space-y-12">
+          <form 
+            onSubmit={(e) => { 
+              e.preventDefault(); 
+              setApplicationCode(`${Math.floor(1000 + Math.random() * 9000)}`); 
+              setIsSubmitted(true); 
+            }} 
+            className="p-10 space-y-12"
+          >
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+              {/* GROOM SECTION */}
               <Section title="GROOM" color="blue">
                 <div className="grid grid-cols-3 gap-3">
                   <Field label="First"><Input value={formData.gFirst} onChange={e => setFormData({...formData, gFirst: e.target.value})} /></Field>
@@ -230,6 +103,7 @@ export default function MarriageForm() {
                 <GiverSection person="Groom" age={formData.gAge} data={formData} setData={setFormData} prefix="g" />
               </Section>
 
+              {/* BRIDE SECTION */}
               <Section title="BRIDE" color="pink">
                 <div className="grid grid-cols-3 gap-3">
                   <Field label="First"><Input value={formData.bFirst} onChange={e => setFormData({...formData, bFirst: e.target.value})} /></Field>
@@ -249,21 +123,31 @@ export default function MarriageForm() {
                 <GiverSection person="Bride" age={formData.bAge} data={formData} setData={setFormData} prefix="b" />
               </Section>
             </div>
-            <button type="submit" className="w-full bg-slate-900 text-white py-5 rounded-xl font-bold text-xl uppercase tracking-widest hover:bg-black">Generate Marriage Pack</button>
+            <button type="submit" className="w-full bg-slate-900 text-white py-5 rounded-xl font-bold text-xl uppercase tracking-widest hover:bg-black">
+              Generate Marriage Pack
+            </button>
           </form>
         ) : (
           <div className="p-20 text-center space-y-8">
             <h2 className="text-8xl font-black text-blue-600">{applicationCode}</h2>
-            <button onClick={generateExcel} disabled={loading} className="w-full max-w-md bg-green-600 text-white py-6 rounded-2xl font-bold text-2xl shadow-xl hover:bg-green-700">
+            <button 
+              onClick={generateExcel} 
+              disabled={loading} 
+              className="w-full max-w-md bg-green-600 text-white py-6 rounded-2xl font-bold text-2xl shadow-xl hover:bg-green-700"
+            >
               {loading ? "GENERATING..." : "DOWNLOAD EXCEL"}
             </button>
-            <button onClick={() => setIsSubmitted(false)} className="block mx-auto text-slate-500 underline font-bold">Back to Edit</button>
+            <button onClick={() => setIsSubmitted(false)} className="block mx-auto text-slate-500 underline font-bold">
+              Back to Edit
+            </button>
           </div>
         )}
       </div>
     </div>
   );
 }
+
+// --- HELPER COMPONENTS ---
 
 function Section({ title, color, children }: any) {
   const textColor = color === 'blue' ? 'text-blue-800' : 'text-pink-800';
