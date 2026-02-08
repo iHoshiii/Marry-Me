@@ -44,7 +44,7 @@ export default function MarriageForm() {
   const generateExcel = async () => {
     setLoading(true);
     try {
-      const { gAge: mAge, bAge: fAge } = formData;
+      const { gAge: mAge, bAge: fAge, gTown, gProv, bTown, bProv } = formData;
       
       let templateName = "application_only.xlsx";
       if (fAge >= 18 && fAge <= 20 && mAge >= 25) templateName = "consent_f.xlsx";
@@ -66,14 +66,25 @@ export default function MarriageForm() {
       const monthNow = now.toLocaleString('default', { month: 'long' }).toUpperCase();
       const yearNow = now.getFullYear();
 
+      const toUp = (val: any) => (val ? val.toString().toUpperCase().trim() : "");
+      
+      const gFullAddr = toUp(`${formData.gBrgy}, ${formData.gTown}, ${formData.gProv}`);
+      const bFullAddr = toUp(`${formData.bBrgy}, ${formData.bTown}, ${formData.bProv}`);
+      const gTownProv = toUp(`${formData.gTown}, ${formData.gProv}`);
+      const bTownProv = toUp(`${formData.bTown}, ${formData.bProv}`);
+
+      // Logic for External Address Sheets
+      const isGroomExternal = gTownProv !== "SOLANO, NUEVA VIZCAYA";
+      const isBrideExternal = bTownProv !== "SOLANO, NUEVA VIZCAYA";
+      const needsBackSheets = isGroomExternal || isBrideExternal;
+
       workbook.worksheets.forEach(sheet => {
         const sName = sheet.name.toUpperCase();
-        const toUp = (val: any) => (val ? val.toString().toUpperCase() : "");
-        
-        const gFullAddr = toUp(`${formData.gBrgy}, ${formData.gTown}, ${formData.gProv}`);
-        const bFullAddr = toUp(`${formData.bBrgy}, ${formData.bTown}, ${formData.bProv}`);
-        const gTownProv = toUp(`${formData.gTown}, ${formData.gProv}`);
-        const bTownProv = toUp(`${formData.bTown}, ${formData.bProv}`);
+
+        // Handle Sheet Visibility
+        if (sName.includes("ADDRESSBACKNOTICE") || sName.includes("ENVELOPEADDRESS")) {
+          sheet.state = needsBackSheets ? 'visible' : 'hidden';
+        }
 
         if (sName.includes("APPLICATION")) {
           // --- MALE MAPPING ---
@@ -159,6 +170,29 @@ export default function MarriageForm() {
           sheet.getCell('AD37').value = yearNow;
           sheet.getCell('B38').value = "SOLANO, NUEVA VIZCAYA";
           sheet.getCell('U38').value = "SOLANO, NUEVA VIZCAYA";
+        }
+
+        // --- NOTICE TAB LOGIC ---
+        if (sName.includes("NOTICE")) {
+            // F20 and F26 are usually where town/prov are mapped in Notice templates
+            // Your request: If both are Solano, leave E44-46 empty. 
+            // If both are not, print addresses on E44, E45.
+            // If one is not, print on E44.
+
+            if (isGroomExternal && isBrideExternal) {
+                sheet.getCell('E44').value = gFullAddr;
+                sheet.getCell('E45').value = bFullAddr;
+            } else if (isGroomExternal) {
+                sheet.getCell('E44').value = gFullAddr;
+                sheet.getCell('E45').value = "";
+            } else if (isBrideExternal) {
+                sheet.getCell('E44').value = bFullAddr;
+                sheet.getCell('E45').value = "";
+            } else {
+                sheet.getCell('E44').value = "";
+                sheet.getCell('E45').value = "";
+                sheet.getCell('E46').value = "";
+            }
         }
       });
 
